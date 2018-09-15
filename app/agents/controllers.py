@@ -4,8 +4,7 @@ from app.agents.models import Bot
 from app.commons import build_response
 
 bots = Blueprint('bots_blueprint', __name__,
-                    url_prefix='/agents/<bot_name>')
-
+                 url_prefix='/agents/<bot_name>')
 
 
 @bots.route('/config', methods=['PUT'])
@@ -22,11 +21,11 @@ def set_config(bot_name):
     bot.save()
     return build_response.sent_ok()
 
+
 @bots.route('/config', methods=['GET'])
 def get_config(bot_name):
     """
     Update bot config
-    :param json:
     :return:
     """
     bot = Bot.objects.get(name=bot_name)

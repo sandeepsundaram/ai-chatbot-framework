@@ -72,7 +72,7 @@
             </div>
             `
 
-            document.body.innerHTML += content;
+            $("body").append(content);
 
             $(".iky_container").hide();
             
@@ -153,6 +153,7 @@
                     var parsedResponse = JSON.parse(response);
                     responseObject = parsedResponse.responseData;
                 }
+                payload = responseObject;
                 put_text(responseObject);
             };
 

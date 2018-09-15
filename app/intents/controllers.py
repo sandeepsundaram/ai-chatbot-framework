@@ -1,12 +1,20 @@
 import os
+from StringIO import StringIO
+
 from bson.json_util import dumps
+from bson.json_util import loads
 from bson.objectid import ObjectId
 from flask import Blueprint, request, Response
+from flask import abort
 from flask import current_app as app
-from app.commons import build_response
-from app.intents.models import Intent, Parameter, ApiDetails
-from app.commons.utils import update_document
+from flask import send_file
 
+from app.commons import build_response
+from app.commons.utils import update_document
+from app.intents.models import ApiDetails
+from app.intents.models import Intent
+from app.intents.models import Parameter
+from app.nlu.tasks import train_models
 
 intents = Blueprint('intents_blueprint', __name__,
                     url_prefix='/intents')
@@ -16,7 +24,6 @@ intents = Blueprint('intents_blueprint', __name__,
 def create_intent():
     """
     Create a story from the provided json
-    :param json:
     :return:
     """
     content = request.get_json(silent=True)
@@ -63,8 +70,8 @@ def read_intents():
     find list of intents for the agent
     :return:
     """
-    intents = Intent.objects
-    return build_response.sent_json(intents.to_json())
+    all_intents = Intent.objects
+    return build_response.sent_json(all_intents.to_json())
 
 
 @intents.route('/<id>')
@@ -76,8 +83,7 @@ def read_intent(id):
     """
     return Response(response=dumps(
         Intent.objects.get(
-            id=ObjectId(
-                id)).to_mongo().to_dict()),
+            id=ObjectId(id)).to_mongo().to_dict()),
         status=200,
         mimetype="application/json")
 
@@ -86,8 +92,6 @@ def read_intent(id):
 def update_intent(id):
     """
     Update a story from the provided json
-    :param intent_id:
-    :param json:
     :return:
     """
     json_data = loads(request.get_data())
@@ -95,9 +99,6 @@ def update_intent(id):
     intent = update_document(intent, json_data)
     intent.save()
     return 'success', 200
-
-
-from app.nlu.tasks import train_models
 
 
 @intents.route('/<id>', methods=['DELETE'])
@@ -114,16 +115,12 @@ def delete_intent(id):
     except BaseException:
         pass
 
-    # remove NER model for the deleted stoy
+    # remove NER model for the deleted story
     try:
         os.remove("{}/{}.model".format(app.config["MODELS_DIR"], id))
     except OSError:
         pass
     return build_response.sent_ok()
-
-
-from flask import send_file
-import StringIO
 
 
 @intents.route('/export', methods=['GET'])
@@ -132,16 +129,16 @@ def export_intents():
     Deserialize and export Mongoengines as jsonfile
     :return:
     """
-    strIO = StringIO.StringIO()
+    try:
+        strIO = StringIO.StringIO()
+    except AttributeError:
+        strIO = StringIO()
+
     strIO.write(Intent.objects.to_json())
     strIO.seek(0)
     return send_file(strIO,
                      attachment_filename="iky_intents.json",
                      as_attachment=True)
-
-
-from flask import abort
-from bson.json_util import loads
 
 
 @intents.route('/import', methods=['POST'])
@@ -154,18 +151,18 @@ def import_intents():
     if 'file' not in request.files:
         abort(400, 'No file part')
     json_file = request.files['file']
-    intents = import_json(json_file)
+    all_intents = import_json(json_file)
 
-    return build_response.build_json({"num_intents_created": len(intents)})
+    return build_response.build_json({"num_intents_created": len(all_intents)})
 
 
 def import_json(json_file):
     json_data = json_file.read()
     # intents = Intent.objects.from_json(json_data)
-    intents = loads(json_data)
+    all_intents = loads(json_data)
 
     creates_intents = []
-    for intent in intents:
+    for intent in all_intents:
         new_intent = Intent()
         new_intent = update_document(new_intent, intent)
         new_intent.save()

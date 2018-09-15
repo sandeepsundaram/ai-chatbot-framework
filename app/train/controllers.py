@@ -1,15 +1,11 @@
 from bson.objectid import ObjectId
-import ast
 from flask import Blueprint, request
+
 from app.commons import build_response
-from app.intents.models import Intent, LabeledSentences
+from app.intents.models import Intent
 
 train = Blueprint('train_blueprint', __name__,
-                  url_prefix='/train'
-                  )
-
-
-
+                  url_prefix='/train')
 
 
 @train.route('/<story_id>/data', methods=['POST'])
@@ -28,7 +24,7 @@ def save_training_data(story_id):
 @train.route('/<story_id>/data', methods=['GET'])
 def get_training_data(story_id):
     """
-    retrive training data for a given story
+    retrieve training data for a given story
     :param story_id:
     :return:
     """
