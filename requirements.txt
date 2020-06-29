@@ -16,15 +16,15 @@ pandas==0.25.2
 
 spacy==2.2.2
 
-scikit-learn==0.19.1
+scikit-learn
 cloudpickle==0.5.2
-h5py==2.7.1
+h5py
 tensorflow==1.15.2
 
 parsedatetime==2.4
-python-crfsuite==0.9.5
+python-crfsuite
 python-dateutil==2.6.1
 requests==2.18.4
 
 gunicorn==19.7.1
-gevent==1.2.2
+gevent
