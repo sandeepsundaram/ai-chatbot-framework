@@ -64,7 +64,7 @@ def api():
                 intentId=app.config["DEFAULT_WELCOME_INTENT_NAME"]).first()
             result_json["complete"] = True
             result_json["intent"]["object_id"] = str(intent.id)
-            result_json["intent"]["id"] = str(intent.intentId)
+            result_json["intent"]["id"] = intent.intentId
             result_json["input"] = request_json.get("input")
             template = Template(
                 intent.speechResponse,
@@ -74,31 +74,36 @@ def api():
             app.logger.info(request_json.get("input"), extra=result_json)
             return build_response.build_json(result_json)
 
-        intent_id, confidence, suggestions = predict(request_json.get("input"))
+        # check if input method is event or raw text
+        elif request_json.get("event"):
+            intent_id = request_json.get("event")
+            confidence = 1
+            result_json["event"]=None
+        else:
+            intent_id, confidence, suggestions = predict(request_json.get("input"))
         app.logger.info("intent_id => %s" % intent_id)
         intent = Intent.objects.get(intentId=intent_id)
 
         if intent.parameters:
             parameters = intent.parameters
+            result_json["extractedParameters"] = request_json.get("extractedParameters") or {}
         else:
             parameters = []
 
-        if ((request_json.get("complete") is None) or (
-                request_json.get("complete") is True)):
+        if ((request_json.get("complete") is None) or (request_json.get("complete") is True)):
             result_json["intent"] = {
                 "object_id": str(intent.id),
                 "confidence": confidence,
-                "id": str(intent.intentId.encode('utf8'))
+                "id": intent.intentId
             }
 
             if parameters:
                 # Extract NER entities
-                extracted_parameters = entity_extraction.predict(
-                    intent_id, request_json.get("input"))
+                result_json["extractedParameters"].update(entity_extraction.predict(
+                    intent_id, request_json.get("input")))
 
                 missing_parameters = []
                 result_json["missingParameters"] = []
-                result_json["extractedParameters"] = {}
                 result_json["parameters"] = []
                 for parameter in parameters:
                     result_json["parameters"].append({
@@ -108,12 +113,10 @@ def api():
                     })
 
                     if parameter.required:
-                        if parameter.name not in extracted_parameters.keys():
+                        if parameter.name not in result_json["extractedParameters"].keys():
                             result_json["missingParameters"].append(
                                 parameter.name)
                             missing_parameters.append(parameter)
-
-                result_json["extractedParameters"] = extracted_parameters
 
                 if missing_parameters:
                     result_json["complete"] = False
@@ -122,13 +125,14 @@ def api():
                     result_json["speechResponse"] = split_sentence(current_node["prompt"])
                 else:
                     result_json["complete"] = True
-                    context["parameters"] = extracted_parameters
+                    context["parameters"] = result_json["extractedParameters"]
             else:
                 result_json["complete"] = True
 
         elif request_json.get("complete") is False:
             if "cancel" not in intent.name:
                 intent_id = request_json["intent"]["id"]
+                app.logger.info(intent_id)
                 intent = Intent.objects.get(intentId=intent_id)
 
                 extracted_parameter = entity_extraction.replace_synonyms({

@@ -4,27 +4,19 @@ from app import app
 
 manager = Manager(app)
 
-
 @manager.command
-def install_nltk_dependencies():
-    # Downloading necessary NLTK datasets
-    from nltk import download
-    download("stopwords")
-    download("wordnet")
-    download('averaged_perceptron_tagger')
-    download('punkt')
-    print ("Done")
-
-
-@manager.command
-def init():
+def migrate():
     from app.agents.models import Bot
 
-    # create default bot
-    bot = Bot()
-    bot.name = "default"
-    bot.save()
-    print("Created default bot")
+    try:
+        # create default bot
+        bot = Bot()
+        bot.name = "default"
+        bot.save()
+        print("Created default bot")
+    except:
+        print("Default agent exists.. skipping..")
+
 
     # import some default intents
     from app.intents.controllers import import_json
